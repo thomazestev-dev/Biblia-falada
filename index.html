@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Área de Membros — Bíblia em Áudio</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14213d;--bg2:#1c2d52;--text:#f5efe0;--muted:#b9c0d4;--gold:#e8b44a;--ink:#14213d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Nunito Sans",system-ui,sans-serif;font-size:16px;line-height:1.5}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;margin:0 0 .4em;line-height:1.2}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.hide{display:none!important}
+.wrap{max-width:640px;margin:0 auto;padding:22px 18px 150px}
+/* login */
+.login{min-height:80vh;display:flex;flex-direction:column;justify-content:center;text-align:center;max-width:380px;margin:0 auto;padding:30px 20px}
+.login h1{font-size:2rem}
+.login p{color:var(--muted)}
+.login input{width:100%;padding:14px;border-radius:12px;border:1px solid rgba(232,180,74,.4);background:var(--bg2);color:var(--text);margin-bottom:12px;font:inherit}
+.btn{background:var(--gold);color:var(--ink);font-weight:700;border:0;border-radius:999px;padding:14px 26px;width:100%}
+.tip{font-size:.85rem;color:var(--muted);margin-top:14px}
+/* app */
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.top small{color:var(--muted)}
+.prog{background:var(--bg2);border-radius:14px;padding:14px 16px;margin-bottom:22px}
+.bar{height:8px;background:rgba(245,239,224,.15);border-radius:4px;margin-top:8px;overflow:hidden}
+.bar b{display:block;height:100%;width:12%;background:var(--gold)}
+.mod{background:var(--bg2);border-radius:16px;margin-bottom:12px;overflow:hidden}
+.mod>button{width:100%;text-align:left;background:none;border:0;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mod>button strong{font-family:Fraunces,Georgia,serif;font-size:1.1rem}
+.mod>button small{display:block;color:var(--muted)}
+.chev{transition:transform .2s;color:var(--gold)}
+.mod.open .chev{transform:rotate(90deg)}
+.books{padding:0 12px 12px;display:none}
+.mod.open .books{display:block}
+.book{width:100%;text-align:left;background:rgba(245,239,224,.06);border:0;border-radius:10px;padding:12px 14px;margin-top:8px;display:flex;justify-content:space-between}
+.book span{color:var(--muted);font-size:.9rem}
+.chaps{display:none;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px;padding:10px 2px 4px}
+.chaps.show{display:grid}
+.ch{background:var(--bg);border:1px solid rgba(232,180,74,.35);border-radius:10px;padding:10px 0;text-align:center}
+.ch.on{background:var(--gold);color:var(--ink);font-weight:700}
+.bonus{border:1px dashed var(--gold)}
+.pdf{display:flex;justify-content:space-between;padding:12px 14px;background:rgba(245,239,224,.06);border-radius:10px;margin-top:8px}
+/* player */
+.player{position:fixed;left:0;right:0;bottom:0;background:#0e1830;border-top:1px solid rgba(232,180,74,.4);padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px))}
+.pin{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:14px}
+.pb{flex:none;width:48px;height:48px;border-radius:50%;background:var(--gold);color:var(--ink);border:0;font-size:18px}
+.pi{flex:1;min-width:0}
+.pi strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pi small{color:var(--muted)}
+.pbar{height:6px;background:rgba(245,239,224,.15);border-radius:3px;margin-top:6px;overflow:hidden}
+.pbar b{display:block;height:100%;width:0;background:var(--gold)}
+.skip{background:none;border:1px solid rgba(245,239,224,.3);border-radius:8px;padding:6px 10px;font-size:.85rem}
+
+.ch.done{border-color:var(--gold);color:var(--gold)}
+.ch.on.done{color:var(--ink)}
+.err{color:#ff9b9b;font-size:.9rem;min-height:1.3em;margin:0 0 10px}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:.85rem;margin-top:12px}
+.pdf{width:100%;text-align:left;border:0}
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+  <h1>Bíblia em Áudio</h1>
+  <p>Área de membros. Entre com o e-mail e a senha que você criou depois da compra.</p>
+  <input type="email" id="em" placeholder="Seu e-mail" aria-label="E-mail" autocomplete="email">
+  <input type="password" id="pw" placeholder="Sua senha" aria-label="Senha" autocomplete="current-password">
+  <p class="err" id="err" role="alert"></p>
+  <button class="btn" id="enter">Entrar</button>
+  <button class="link" id="forgot">Esqueci minha senha</button>
+</div>
+
+<div class="login hide" id="setpw">
+  <h1>Crie sua senha</h1>
+  <p>Escolha uma senha com pelo menos 8 caracteres.</p>
+  <input type="password" id="np" placeholder="Nova senha" aria-label="Nova senha" autocomplete="new-password">
+  <p class="err" id="err2" role="alert"></p>
+  <button class="btn" id="savepw">Salvar e entrar</button>
+</div>
+
+<div class="login hide" id="blocked">
+  <h1>Acesso não liberado</h1>
+  <p>Não encontramos uma compra ativa para este e-mail. Se acabou de comprar, aguarde alguns minutos e entre novamente.</p>
+  <button class="btn" id="out1">Sair</button>
+</div>
+
+<div class="wrap hide" id="app">
+  <div class="top"><div><h2 style="margin:0" id="hi">Olá</h2><small>Que bom ter você aqui</small></div><button class="skip" id="out2">Sair</button></div>
+  <div class="prog"><strong>Seu plano de 30 dias</strong><div><small id="day" style="color:var(--muted)"></small></div><div class="bar"><b id="daybar" style="width:0"></b></div></div>
+  <div id="mods"></div>
+</div>
+
+<div class="player hide" id="player">
+  <div class="pin">
+    <button class="pb" id="pb" aria-label="Tocar ou pausar">▶</button>
+    <div class="pi"><strong id="pt">Escolha um capítulo</strong><small id="ps">Toque em um livro e depois no número</small><div class="pbar"><b id="pg"></b></div></div>
+    <button class="skip" id="sp">1x</button>
+  </div>
+  <audio id="au" preload="none"></audio>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+var DATA=[
+{n:"Comece por aqui",d:"Bônus",bonus:1,items:[["Boas-vindas e como usar a área","bonus/boas-vindas.mp3"],["Plano de escuta de 30 dias (PDF)","bonus/plano-30-dias.pdf"],["Como criar o hábito de ouvir (PDF)","bonus/habito-de-ouvir.pdf"]]},
+{n:"Poesia e Sabedoria",d:"Salmos, Provérbios e mais",open:1,books:[["Jó",42],["Salmos",150],["Provérbios",31],["Eclesiastes",12],["Cantares",8]]},
+{n:"Evangelhos e Atos",d:"A vida de Jesus",books:[["Mateus",28],["Marcos",16],["Lucas",24],["João",21],["Atos",28]]},
+{n:"Pentateuco",d:"Os cinco primeiros livros",books:[["Gênesis",50],["Êxodo",40],["Levítico",27],["Números",36],["Deuteronômio",34]]},
+{n:"Livros Históricos",d:"Josué até Ester",books:[["Josué",24],["Juízes",21],["Rute",4],["1 Samuel",31]]},
+{n:"Profetas",d:"Isaías até Malaquias",books:[["Isaías",66],["Jeremias",52],["Daniel",12]]},
+{n:"Cartas e Apocalipse",d:"Romanos até Apocalipse",books:[["Romanos",16],["1 Coríntios",16],["Apocalipse",22]]}
+];
+var $=function(i){return document.getElementById(i)};
+var sb=supabase.createClient(CFG.url,CFG.key);
+var user=null,prof=null,prog={},cur=null,speed=1,lastSave=0,built=false;
+var au=$("au");
+
+function show(id){["login","setpw","blocked","app","player"].forEach(function(x){$(x).classList.add("hide")});
+  id.split(",").forEach(function(x){$(x).classList.remove("hide")})}
+function slug(s){return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g,"-")}
+function key(b,c){return b+"|"+c}
+function url(path){return sb.storage.from("audio").createSignedUrl(path,3600).then(function(r){return r.data&&r.data.signedUrl})}
+
+// ---------- sessão ----------
+var needPw=/type=(invite|recovery)/.test(location.hash);
+sb.auth.onAuthStateChange(function(ev,s){
+  if(ev==="PASSWORD_RECOVERY"){needPw=true}
+  if(s&&needPw){show("setpw");return}
+  if(s&&(ev==="INITIAL_SESSION"||ev==="SIGNED_IN")){start(s.user)}
+  if(!s&&ev!=="TOKEN_REFRESHED"){show("login")}
+});
+$("enter").onclick=function(){
+  $("err").textContent="";
+  sb.auth.signInWithPassword({email:$("em").value.trim(),password:$("pw").value}).then(function(r){
+    if(r.error)$("err").textContent="E-mail ou senha incorretos."});
+};
+$("forgot").onclick=function(){
+  var e=$("em").value.trim();if(!e){$("err").textContent="Digite seu e-mail acima.";return}
+  sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin}).then(function(){$("err").textContent="Enviamos um link para o seu e-mail."});
+};
+$("savepw").onclick=function(){
+  var p=$("np").value;if(p.length<8){$("err2").textContent="Mínimo de 8 caracteres.";return}
+  sb.auth.updateUser({password:p}).then(function(r){
+    if(r.error){$("err2").textContent=r.error.message;return}
+    needPw=false;history.replaceState(null,"",location.pathname);
+    sb.auth.getSession().then(function(x){start(x.data.session.user)});
+  });
+};
+function out(){au.pause();sb.auth.signOut()}
+$("out1").onclick=out;$("out2").onclick=out;
+
+// ---------- carga de dados ----------
+function start(u){
+  user=u;
+  sb.from("profiles").select("*").eq("id",u.id).single().then(function(r){
+    prof=r.data;
+    if(!prof||!prof.active){show("blocked");return}
+    sb.from("progress").select("*").then(function(p){
+      prog={};(p.data||[]).forEach(function(x){prog[key(x.book,x.chapter)]=x});
+      $("hi").textContent="Olá"+(prof.name?", "+prof.name.split(" ")[0]:"");
+      var d=Math.min(30,Math.floor((Date.now()-new Date(prof.started_at))/864e5)+1);
+      $("day").textContent="Dia "+d+" de 30";$("daybar").style.width=(d/30*100)+"%";
+      build();show("app,player");
+    });
+  });
+}
+
+// ---------- lista ----------
+function build(){
+  if(built){refresh();return}built=true;
+  var box=$("mods");
+  DATA.forEach(function(m){
+    var d=document.createElement("div");d.className="mod"+(m.open?" open":"")+(m.bonus?" bonus":"");
+    var h=document.createElement("button");
+    h.innerHTML="<span><strong>"+m.n+"</strong><small>"+m.d+"</small></span><span class='chev'>›</span>";
+    h.onclick=function(){d.classList.toggle("open")};d.appendChild(h);
+    var b=document.createElement("div");b.className="books";
+    if(m.bonus){m.items.forEach(function(it){
+      var p=document.createElement("button");p.className="pdf";p.innerHTML="<span>"+it[0]+"</span><span>›</span>";
+      p.onclick=function(){
+        if(/\.pdf$/.test(it[1])){url(it[1]).then(function(u){if(u)window.open(u,"_blank")})}
+        else playPath(it[0],"Bônus",it[1],null)};
+      b.appendChild(p)})}
+    else m.books.forEach(function(bk){
+      var bb=document.createElement("button");bb.className="book";bb.innerHTML="<strong>"+bk[0]+"</strong><span>"+bk[1]+" caps.</span>";
+      var g=document.createElement("div");g.className="chaps";
+      for(var i=1;i<=bk[1];i++){(function(i){var c=document.createElement("button");c.className="ch";c.textContent=i;
+        c.dataset.k=key(bk[0],i);c.onclick=function(){playChapter(bk[0],i,bk[1])};g.appendChild(c)})(i)}
+      bb.onclick=function(){g.classList.toggle("show")};b.appendChild(bb);b.appendChild(g)});
+    d.appendChild(b);box.appendChild(d);
+  });
+  refresh();
+}
+function refresh(){
+  document.querySelectorAll(".ch").forEach(function(c){
+    var p=prog[c.dataset.k];c.classList.toggle("done",!!(p&&p.completed));
+    c.classList.toggle("on",!!cur&&cur.k===c.dataset.k)});
+}
+
+// ---------- player ----------
+function playChapter(book,ch,total){
+  cur={book:book,ch:ch,total:total,k:key(book,ch)};
+  var p=prog[cur.k];
+  playPath(book+" "+ch,"",slug(book)+"/"+ch+".mp3",p&&!p.completed?p.position:0);
+  refresh();
+}
+function playPath(title,sub,path,startAt){
+  if(!cur||cur.path!==path){if(startAt===null)cur=null}
+  $("pt").textContent=title;$("ps").textContent=sub||"Carregando…";
+  url(path).then(function(u){
+    if(!u){$("ps").textContent="Áudio ainda não disponível";return}
+    au.src=u;au.playbackRate=speed;
+    au.onloadedmetadata=function(){if(startAt)au.currentTime=startAt};
+    au.play();$("ps").textContent=sub||"";
+  });
+}
+function save(done){
+  if(!cur)return;
+  var row={user_id:user.id,book:cur.book,chapter:cur.ch,position:done?0:au.currentTime||0,completed:done||!!(prog[cur.k]&&prog[cur.k].completed),updated_at:new Date().toISOString()};
+  prog[cur.k]=row;
+  sb.from("progress").upsert(row,{onConflict:"user_id,book,chapter"}).then(function(){});
+}
+au.onplay=function(){$("pb").textContent="❚❚"};
+au.onpause=function(){$("pb").textContent="▶";save(false)};
+au.ontimeupdate=function(){
+  if(au.duration)$("pg").style.width=(au.currentTime/au.duration*100)+"%";
+  if(Date.now()-lastSave>10000){lastSave=Date.now();save(false)}
+};
+au.onended=function(){
+  save(true);refresh();
+  if(cur&&cur.ch<cur.total)playChapter(cur.book,cur.ch+1,cur.total);
+};
+$("pb").onclick=function(){if(!au.src)return;au.paused?au.play():au.pause()};
+$("sp").onclick=function(){speed=speed===1?1.5:speed===1.5?2:1;$("sp").textContent=speed+"x";au.playbackRate=speed};
+window.addEventListener("pagehide",function(){save(false)});
+</script>
+</body>
+</html>

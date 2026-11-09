@@ -1,0 +1,6 @@
+{
+  "name": "biblia-em-audio",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": { "@supabase/supabase-js": "2.45.4" }
+}
