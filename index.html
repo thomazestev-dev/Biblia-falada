@@ -70,6 +70,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
   <input type="email" id="em" placeholder="Seu e-mail" aria-label="E-mail" autocomplete="email">
   <input type="password" id="pw" placeholder="Sua senha" aria-label="Senha" autocomplete="current-password">
   <p class="err" id="err" role="alert"></p>
+  <p class="tip hide" id="tip">Modo de teste ativo: os dados já estão preenchidos, é só tocar em Entrar.</p>
   <button class="btn" id="enter">Entrar</button>
   <button class="link" id="forgot">Esqueci minha senha</button>
 </div>
@@ -119,23 +120,39 @@ var $=function(i){return document.getElementById(i)};
 var sb=supabase.createClient(CFG.url,CFG.key);
 var user=null,prof=null,prog={},cur=null,speed=1,lastSave=0,built=false;
 var au=$("au");
+// ---------- MODO DE TESTE (desligue com DEMO:false no config.js) ----------
+var DEMO=!!CFG.DEMO,demo=false,dOn=false,dProg=0,dTimer=null;
+var DU="teste@biblia.com",DP="teste123";
+if(DEMO){$("em").value=DU;$("pw").value=DP;$("tip").classList.remove("hide")}
+function demoTick(){
+  if(!dOn)return;dProg+=0.5*speed;
+  if(dProg>=100){dProg=0;dOn=false;$("pb").textContent="▶";au.onended();}
+  $("pg").style.width=dProg+"%";
+}
 
 function show(id){["login","setpw","blocked","app","player"].forEach(function(x){$(x).classList.add("hide")});
   id.split(",").forEach(function(x){$(x).classList.remove("hide")})}
 function slug(s){return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g,"-")}
 function key(b,c){return b+"|"+c}
-function url(path){return sb.storage.from("audio").createSignedUrl(path,3600).then(function(r){return r.data&&r.data.signedUrl})}
+function url(path){if(demo)return Promise.resolve(null);return sb.storage.from("audio").createSignedUrl(path,3600).then(function(r){return r.data&&r.data.signedUrl})}
 
 // ---------- sessão ----------
 var needPw=/type=(invite|recovery)/.test(location.hash);
 sb.auth.onAuthStateChange(function(ev,s){
   if(ev==="PASSWORD_RECOVERY"){needPw=true}
+  if(demo)return;
   if(s&&needPw){show("setpw");return}
   if(s&&(ev==="INITIAL_SESSION"||ev==="SIGNED_IN")){start(s.user)}
   if(!s&&ev!=="TOKEN_REFRESHED"){show("login")}
 });
 $("enter").onclick=function(){
   $("err").textContent="";
+  if(DEMO&&$("em").value.trim()===DU&&$("pw").value===DP){
+    demo=true;user={id:"demo"};prof={active:true,name:"Maria",started_at:new Date(Date.now()-3*864e5).toISOString()};prog={};
+    $("hi").textContent="Olá, Maria";$("day").textContent="Dia 4 de 30";$("daybar").style.width="13%";
+    if(!dTimer)dTimer=setInterval(demoTick,300);
+    build();show("app,player");return;
+  }
   sb.auth.signInWithPassword({email:$("em").value.trim(),password:$("pw").value}).then(function(r){
     if(r.error)$("err").textContent="E-mail ou senha incorretos."});
 };
@@ -151,7 +168,10 @@ $("savepw").onclick=function(){
     sb.auth.getSession().then(function(x){start(x.data.session.user)});
   });
 };
-function out(){au.pause();sb.auth.signOut()}
+function out(){
+  if(demo){demo=false;dOn=false;dProg=0;cur=null;$("pg").style.width="0";$("pt").textContent="Escolha um capítulo";$("pb").textContent="▶";refresh();show("login");return}
+  au.pause();sb.auth.signOut()
+}
 $("out1").onclick=out;$("out2").onclick=out;
 
 // ---------- carga de dados ----------
@@ -183,7 +203,7 @@ function build(){
     if(m.bonus){m.items.forEach(function(it){
       var p=document.createElement("button");p.className="pdf";p.innerHTML="<span>"+it[0]+"</span><span>›</span>";
       p.onclick=function(){
-        if(/\.pdf$/.test(it[1])){url(it[1]).then(function(u){if(u)window.open(u,"_blank")})}
+        if(/\.pdf$/.test(it[1])){url(it[1]).then(function(u){if(u)window.open(u,"_blank");else alert("Arquivo indisponível no modo de teste.")})}
         else playPath(it[0],"Bônus",it[1],null)};
       b.appendChild(p)})}
     else m.books.forEach(function(bk){
@@ -210,6 +230,7 @@ function playChapter(book,ch,total){
   refresh();
 }
 function playPath(title,sub,path,startAt){
+  if(demo){$("pt").textContent=title;$("ps").textContent=(sub||"")+" · exemplo (sem áudio real)";dProg=0;dOn=true;$("pb").textContent="❚❚";return}
   if(!cur||cur.path!==path){if(startAt===null)cur=null}
   $("pt").textContent=title;$("ps").textContent=sub||"Carregando…";
   url(path).then(function(u){
@@ -221,6 +242,7 @@ function playPath(title,sub,path,startAt){
 }
 function save(done){
   if(!cur)return;
+  if(demo){if(done)prog[cur.k]={completed:true};return}
   var row={user_id:user.id,book:cur.book,chapter:cur.ch,position:done?0:au.currentTime||0,completed:done||!!(prog[cur.k]&&prog[cur.k].completed),updated_at:new Date().toISOString()};
   prog[cur.k]=row;
   sb.from("progress").upsert(row,{onConflict:"user_id,book,chapter"}).then(function(){});
@@ -235,7 +257,7 @@ au.onended=function(){
   save(true);refresh();
   if(cur&&cur.ch<cur.total)playChapter(cur.book,cur.ch+1,cur.total);
 };
-$("pb").onclick=function(){if(!au.src)return;au.paused?au.play():au.pause()};
+$("pb").onclick=function(){if(demo){if($("pt").textContent==="Escolha um capítulo")return;dOn=!dOn;$("pb").textContent=dOn?"❚❚":"▶";return}if(!au.src)return;au.paused?au.play():au.pause()};
 $("sp").onclick=function(){speed=speed===1?1.5:speed===1.5?2:1;$("sp").textContent=speed+"x";au.playbackRate=speed};
 window.addEventListener("pagehide",function(){save(false)});
 </script>
