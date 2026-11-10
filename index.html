@@ -117,7 +117,12 @@ var DATA=[
 {n:"Cartas e Apocalipse",d:"Romanos até Apocalipse",books:[["Romanos",16],["1 Coríntios",16],["Apocalipse",22]]}
 ];
 var $=function(i){return document.getElementById(i)};
-var sb=supabase.createClient(CFG.url,CFG.key);
+var CFG=window.CFG||{url:"",key:"",DEMO:true};
+var sb;
+try{sb=supabase.createClient(CFG.url,CFG.key)}catch(e){
+  // biblioteca não carregou: o app abre mesmo assim (o modo de teste continua funcionando)
+  sb={auth:{onAuthStateChange:function(){},signInWithPassword:function(){return Promise.resolve({error:1})},resetPasswordForEmail:function(){return Promise.resolve()},signOut:function(){return Promise.resolve()}},storage:{from:function(){return{createSignedUrl:function(){return Promise.resolve({})}}}}};
+}
 var user=null,prof=null,prog={},cur=null,speed=1,lastSave=0,built=false;
 var au=$("au");
 // ---------- MODO DE TESTE (desligue com DEMO:false no config.js) ----------
@@ -147,6 +152,7 @@ sb.auth.onAuthStateChange(function(ev,s){
 });
 $("enter").onclick=function(){
   $("err").textContent="";
+  if(/SEU-PROJETO|SUA-CHAVE/.test(CFG.url+CFG.key)&&!DEMO){$("err").textContent="O config.js ainda não foi preenchido com a URL e a chave do Supabase.";return}
   if(DEMO&&$("em").value.trim()===DU&&$("pw").value===DP){
     demo=true;user={id:"demo"};prof={active:true,name:"Maria",started_at:new Date(Date.now()-3*864e5).toISOString()};prog={};
     $("hi").textContent="Olá, Maria";$("day").textContent="Dia 4 de 30";$("daybar").style.width="13%";
@@ -154,7 +160,10 @@ $("enter").onclick=function(){
     build();show("app,player");return;
   }
   sb.auth.signInWithPassword({email:$("em").value.trim(),password:$("pw").value}).then(function(r){
-    if(r.error)$("err").textContent="E-mail ou senha incorretos."});
+    if(r.error){
+      var m=r.error.message||String(r.error);
+      $("err").textContent=/Invalid login/i.test(m)?"E-mail ou senha incorretos.":/not confirmed/i.test(m)?"E-mail ainda não confirmado (no Supabase, marque Auto Confirm User).":/Invalid API key|apikey/i.test(m)?"Chave anon errada no config.js.":/fetch|network/i.test(m)?"Não conectou ao Supabase: confira a URL no config.js.":"Erro: "+m;
+    }});
 };
 $("forgot").onclick=function(){
   var e=$("em").value.trim();if(!e){$("err").textContent="Digite seu e-mail acima.";return}
@@ -179,6 +188,8 @@ function start(u){
   user=u;
   sb.from("profiles").select("*").eq("id",u.id).single().then(function(r){
     prof=r.data;
+    if(r.error){console.error(r.error);$("blocked").querySelector("p").textContent="Erro ao ler o perfil: "+r.error.message+" (rode o schema.sql no Supabase)."}
+    else if(!prof){$("blocked").querySelector("p").textContent="Seu usuário existe, mas não tem perfil. Rode o schema.sql e recrie o usuário, ou insira o perfil manualmente."}
     if(!prof||!prof.active){show("blocked");return}
     sb.from("progress").select("*").then(function(p){
       prog={};(p.data||[]).forEach(function(x){prog[key(x.book,x.chapter)]=x});
